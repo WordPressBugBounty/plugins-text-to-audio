@@ -1,6 +1,5 @@
 <?php
 
-use TTA\TTA_Cache;
 use TTA\TTA_Helper;
 
 /**
@@ -234,6 +233,7 @@ function get_enqueued_js_object( $content, $btn_no, $class, $btn_style, $text_ar
 
 	global $post;
 
+	// delete_post_meta($post->ID, 'tts_mp3_file_urls');
 	$language           = TTA_Helper::tts_site_language( $plugin_all_settings );
 	$voice              = TTA_Helper::tts_get_voice( $plugin_all_settings );
 	$language_and_voice = TTA_Helper::get_player_language_and_player_voice( $language, $voice, $plugin_all_settings, $post );
@@ -727,12 +727,6 @@ function set_initial_button_texts( $content_read_time ) {
 
 
 function get_player_id() {
-//	$cache_key   = TTA_Cache::get_key( 'get_player_id' );
-//	$cache_value = TTA_Cache::get( $cache_key );
-//
-//	if ( $cache_value ) {
-//		return $cache_value;
-//	}
 	global $post;
 
 	$customize_settings                   = (array) TTA_Helper::tts_get_settings( 'customize' );
@@ -746,31 +740,19 @@ function get_player_id() {
 
 	$player_id = isset( $customize_settings['buttonSettings']['id'] ) ? $customize_settings['buttonSettings']['id'] : 1;
 
+
 	if ( ! is_pro_license_active() && $player_id > 1 ) {
 		$player_id = 1;
 	}
 
 
-	$player_id = apply_filters( 'tts_get_player_id', $player_id );
-
-//	TTA_Cache::set( $cache_key, $player_id );
-
-	return $player_id;
-
-
+	return apply_filters( 'tts_get_player_id', $player_id, $customize_settings, $post );
 }
 
 /**
  * Is plugin active
  */
 function is_pro_active() {
-
-	$cache_key   = TTA_Cache::get_key( 'is_pro_active' );
-	$cache_value = TTA_Cache::get( $cache_key );
-
-	if ( $cache_value ) {
-		return $cache_value;
-	}
 
 //	if ( ! function_exists( 'ttsp_fs' ) ) {
 //		return false;
@@ -785,20 +767,18 @@ function is_pro_active() {
 		include_once ABSPATH . 'wp-admin/includes/plugin.php';
 	}
 
-	$status = false;
+	$status = is_plugin_active( 'text-to-speech-pro/text-to-audio-pro.php' );
 
-	if ( is_plugin_active( 'text-to-speech-pro/text-to-audio-pro.php' ) ) {
-		$status = true;
-	} else if ( is_plugin_active( 'text-to-speech-pro/text-to-audio-pro.php' ) ) {
-		$status = true;
-	} else if ( is_plugin_active( 'text-to-audio-pro/text-to-audio-pro.php' ) ) {
-		$status = true;
+	if ( $status ) {
+		return true;
 	}
 
-	$status = apply_filters( 'tts_is_pro_active', $status );
+	$status = is_plugin_active( 'text-to-speech-pro-premium/text-to-audio-pro.php' );
 
-	TTA_Cache::set( $cache_key, $status );
+	if ( $status ) {
+		return true;
+	}
 
-	return $status;
 
+	return is_plugin_active( 'text-to-audio-pro/text-to-audio-pro.php' );
 }

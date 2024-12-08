@@ -1,9 +1,6 @@
 <?php
 
 namespace TTA_Api;
-
-use TTA\TTA_Cache;
-
 /**
  * This class is for getting all plugin's data  through api.
  * This is applied for tracker menu.
@@ -257,7 +254,7 @@ class TTA_Api_Routes {
 
 			$response['data'] = get_option( 'tta_record_settings' );
 
-			TTA_Cache::delete( 'all_settings' );
+			delete_transient( 'tts_all_settings' );
 
 			return rest_ensure_response( $response );
 		}
@@ -283,7 +280,7 @@ class TTA_Api_Routes {
 			update_option( 'tta_listening_settings', $fields );
 
 			$response['data'] = get_option( 'tta_listening_settings' );
-			TTA_Cache::delete( 'all_settings' );
+			delete_transient( 'tts_all_settings' );
 
 			return rest_ensure_response( $response );
 		}
@@ -310,8 +307,9 @@ class TTA_Api_Routes {
 
 			$response['data'] = get_option( 'tta_customize_settings' );
 
-			TTA_Cache::delete( 'all_settings' );
+			delete_transient( 'tts_all_settings' );
 
+			delete_transient( 'tts_cached_player_id' );
 
 			return rest_ensure_response( $response );
 		}
@@ -333,18 +331,12 @@ class TTA_Api_Routes {
 		// save data about recording.
 		if ( 'post' == $request['method'] ) {
 			$fields = json_decode( $request['fields'] );
-			if ( isset( $fields->tta__settings_clear_all_cache ) && $fields->tta__settings_clear_all_cache ) {
-				TTA_Cache::flush();
-				$fields->tta__settings_clear_all_cache = false;
-			} else {
-				TTA_Cache::delete( 'all_settings' );
-			}
-
 
 			update_option( 'tta_settings_data', $fields );
 
 			$response['data'] = get_option( 'tta_settings_data' );
 
+			delete_transient( 'tts_all_settings' );
 
 			return rest_ensure_response( $response );
 		}
@@ -387,7 +379,7 @@ class TTA_Api_Routes {
 
 			$response['data'] = get_option( 'tts_text_aliases' );
 
-			TTA_Cache::delete( 'all_settings' );
+			delete_transient( 'tts_all_settings' );
 
 			return rest_ensure_response( $response );
 		}
@@ -401,21 +393,21 @@ class TTA_Api_Routes {
 		}
 	}
 
-	public function get_all_user_roles( $request ) {
+	public function get_all_user_roles($request) {
 		// Access the global $wp_roles object
-		if ( ! isset( $wp_roles ) ) {
+		if (!isset($wp_roles)) {
 			global $wp_roles;
 		}
 
 		// Get all roles
 		$all_roles = $wp_roles->roles;
 
-		$user_roles        = [];
+		$user_roles = [];
 		$user_roles['all'] = 'All';
 
 		// Output all roles
-		foreach ( $all_roles as $role_key => $role_data ) {
-			$user_roles[ $role_key ] = $role_data['name'];
+		foreach ($all_roles as $role_key => $role_data) {
+			$user_roles[$role_key]  = $role_data['name'];
 		}
 
 		$response['status'] = true;
