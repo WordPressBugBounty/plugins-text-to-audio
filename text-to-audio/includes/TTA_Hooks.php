@@ -104,6 +104,36 @@ class TTA_Hooks {
 		// WP Rocket
 		add_filter( 'rocket_exclude_css', [ $this, 'cache_exclude_css_text_to_speech' ] );
 
+
+		// Cache data update.
+		// Hook into category create, update, and delete actions
+		add_action( 'create_category', [ 'TTA\TTA_Cache', 'update_cached_categories' ] );
+		add_action( 'edit_category', [ 'TTA\TTA_Cache', 'update_cached_categories' ] );
+		add_action( 'delete_category', [ 'TTA\TTA_Cache', 'update_cached_categories' ] );
+		// Hook into tag create, update, and delete actions
+		add_action( 'create_post_tag', [ 'TTA\TTA_Cache', 'update_cached_tags' ] );
+		add_action( 'edit_post_tag', [ 'TTA\TTA_Cache', 'update_cached_tags' ] );
+		add_action( 'delete_post_tag', [ 'TTA\TTA_Cache', 'update_cached_tags' ] );
+
+		// Hook to update cache when any post is created or updated
+		add_action( 'save_post', [ 'TTA\TTA_Cache', 'update_post_type_cache' ] );
+
+		// Hook to update cache when any post is deleted
+		add_action( 'delete_post', [ 'TTA\TTA_Cache', 'update_post_type_cache' ] );
+
+		// Hook to update cache when any post is created or updated
+		add_action( 'save_post', [ 'TTA\TTA_Cache', 'update_post_type_cache' ] );
+
+		// Hook to update cache when any post is deleted
+		add_action( 'delete_post', [ 'TTA\TTA_Cache', 'update_post_type_cache' ] );
+
+		// Hook after any plugin is activated
+		add_action('activated_plugin', [$this, 'clear_necessary_cache'], 10, 2);
+
+		// Hook after any plugin is deactivated
+		add_action('deactivated_plugin', [$this, 'clear_necessary_cache'], 10, 2);
+
+
 	}
 
 	/**
@@ -215,6 +245,10 @@ class TTA_Hooks {
 					break;
 				}
 			}
+		}
+
+		if ( $options['type'] == 'plugin' ) {
+			TTA_Cache::update_transient_during_plugins_crud();
 		}
 
 	}
@@ -386,7 +420,6 @@ class TTA_Hooks {
 		global $wp_scripts;
 		$registered_handles = array_keys( $wp_scripts->registered );
 		// foreach($registered_handles as $handle) {
-		//     error_log(print_r($handle,1));
 		// 	if(in_array($handle, self::$excludable_js_arr)) {
 		// 		$excluded_js[] = $handle;
 		// 	}
@@ -496,6 +529,10 @@ class TTA_Hooks {
 
 		return $content_sanitized;
 	}
+
+    public function clear_necessary_cache($plugin, $network) {
+		    TTA_Cache::update_transient_during_plugins_crud();
+    }
 
 }
 
