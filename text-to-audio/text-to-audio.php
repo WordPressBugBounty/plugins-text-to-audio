@@ -15,7 +15,7 @@
  * Plugin Name:       Text To Speech TTS Accessibility
  * Plugin URI:        https://atlasaidev.com/
  * Description:       The most user-friendly Text-to-Speech Accessibility plugin. Just install and automatically add a Text to Audio player to your WordPress site!
- * Version:           1.9.19
+ * Version:           1.9.20
  * Author:            AtlasAiDev
  * Author URI:        http://atlasaidev.com/
  * License:           GPL-3.0+
@@ -211,7 +211,7 @@ class TTA_Init {
 
 	public function __construct() {
 		if ( ! defined( 'TEXT_TO_AUDIO_VERSION' ) ) {
-			define( 'TEXT_TO_AUDIO_VERSION', apply_filters( 'tts_version', ' 1.9.19' ) );
+			define( 'TEXT_TO_AUDIO_VERSION', apply_filters( 'tts_version', ' 1.9.20' ) );
 		}
 
 		if ( ! defined( 'TEXT_TO_AUDIO_PLUGIN_NAME' ) ) {
@@ -297,7 +297,6 @@ register_deactivation_hook( __FILE__, function () {
 } );
 
 
-
 /**
  *
  * Create short code for qr code.
@@ -329,14 +328,9 @@ function allow_shortcode_in_html_tag( $output, $tag, $attr, $m ) {
             $content = $m[5] . $output;
         }
 
-
-
         //Get the content wrapped by the shortcode.
         return $content;
     }
 
     return $output;
 }
-
-
-
