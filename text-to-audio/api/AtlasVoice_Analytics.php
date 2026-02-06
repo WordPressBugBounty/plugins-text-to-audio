@@ -80,6 +80,11 @@ class AtlasVoice_Analytics {
 			$existing_analytics = maybe_unserialize( $existing_entry->analytics );
 			// Sum the existing and new analytics data
 			foreach ( $new_analytics as $key => $value ) {
+                if($key === 'device_info' ) {
+                    $existing_analytics += $value;
+                    continue;
+                }
+
 				if ( isset( $existing_analytics[ $key ] ) ) {
 					$existing_analytics[ $key ]['count']     += $value['count'];
 					$existing_analytics[ $key ]['timestamp'] = $value['timestamp'];
@@ -87,7 +92,6 @@ class AtlasVoice_Analytics {
 					$existing_analytics[ $key ] = $value;
 				}
 			}
-
 			// Update the entry
 			$wpdb->update(
 				$table_name,
@@ -102,7 +106,12 @@ class AtlasVoice_Analytics {
 			);
 		} else {
 			// Create a new entry
-			$wpdb->insert(
+            if( isset( $new_analytics['device_info'] ) ) {
+                $new_analytics += $new_analytics['device_info'];
+                unset( $new_analytics['device_info'] );
+            }
+
+            $wpdb->insert(
 				$table_name,
 				array(
 					'user_id'    => $user_id,
@@ -155,13 +164,21 @@ class AtlasVoice_Analytics {
 		global $wpdb;
 		$table_name = $wpdb->prefix . 'atlasvoice_analytics';
 
-		$post_id         = $request->get_param( 'id' );
-		$args['post_id'] = $post_id;
+		$post_id         = $request->get_param( 'post_id' );
+		$from_date         = $request->get_param( 'from_date' );
+		$to_date         = $request->get_param( 'to_date' );
+        if(!$to_date) {
+            $to_date = current_time( 'mysql' );
+        }
+		$args['post_id']   = $post_id;
+		$args['from_date'] = $from_date;
+		$args['to_date']   = $to_date;
+
 		$defaults        = array(
-			'user_id'   => null,
-			'post_id'   => null,
-			'from_date' => null,
-			'to_date'   => current_time( 'mysql' ), // Default to today if 'to_date' is not provided
+            'user_id'   => null,
+            'post_id'   => null,
+            'from_date' => null,
+            'to_date'   => current_time( 'mysql' ), // Default to today if 'to_date' is not provided
 		);
 
 		$args       = wp_parse_args( $args, $defaults );
@@ -213,6 +230,7 @@ class AtlasVoice_Analytics {
 
 		$response['status'] = true;
 		$response['data']   = $total_results;
+		$response['extra']   = [];
 
 		return rest_ensure_response( $response );
 	}
@@ -382,4 +400,19 @@ class AtlasVoice_Analytics {
 
 		return $merged;
 	}
+
+    /**
+     * @param $request
+     *
+     * @return \WP_Error|\WP_HTTP_Response|\WP_REST_Response
+     */
+    public function report( $request ) {
+        $body = [];
+        $body = $request->get_body();
+        $body = json_decode( $body, true );
+        $response['status'] = true;
+        $response['data']   = $body;
+
+        return rest_ensure_response( $response );
+    }
 }

@@ -47,7 +47,7 @@ class TTA_Helper
         return apply_filters('tts_is_exluded_by_terms', $is_exclude, $term_type);
     }
 
-    public static function should_load_button($current_post = '')
+    public static function should_load_button($current_post = '', $called_from = 'default')
     {
         $should_load_button = false;
         if(!$current_post) {
@@ -55,7 +55,7 @@ class TTA_Helper
             $current_post = $post;
         }
         // is_home() || is_archive() || is_front_page() || is_category()
-        if (\is_single() || \is_singular()) {
+        if (\is_single($current_post) || apply_filters('tts_force_check_is_singular', is_singular() , $current_post)) {
             $should_load_button = true;
         }
 
@@ -379,11 +379,10 @@ class TTA_Helper
         return $voice;
     }
 
-    public static function tts_file_name($title, $selectedLang, $voice = '', $post_id = '')
+    public static function tts_file_name($title, $selectedLang, $voice = '', $post_id = '', $post = '')
     {
-        global $post;
-        if (!$post_id && $post) { // TODO: must add post ID to file name.
-            $post_id = $post->ID;
+        if(!$post) {
+            global $post;
         }
         /**
          * When title is not added to readble content by UI
@@ -393,6 +392,18 @@ class TTA_Helper
         if (!$title) {
             $title = $post->post_title;
         }
+        /**
+         * TTS-191
+         * When title is empty file name will be post id
+         */
+        if (!$post_id && $post) { // TODO: must add post ID to file name.
+            $post_id = $post->ID;
+        }
+
+        if(!$title) {
+            $title = $post_id;
+        }
+
         $title = trim($title);
 
         $lang_code = explode('-', str_replace(['_', ' '], '-', $selectedLang));
@@ -542,7 +553,11 @@ class TTA_Helper
         }
         $final_mp3_file_ulrs = $mp3_file_urls;
         $should_update_urls = false;
-        if (get_post_meta($post->ID, 'tts_is_mp3_file_url_exists', true) && count($final_mp3_file_ulrs)) {
+        /**
+         * front count to empty function used.
+         * TTS-195: eric.corbett2@gmail.com TTA_Helper.php:556 issue fixed
+         */
+        if (get_post_meta($post->ID, 'tts_is_mp3_file_url_exists', true) && !empty($final_mp3_file_ulrs)) {
             return apply_filters('tts_mp3_file_urls', $final_mp3_file_ulrs, $post, $mp3_file_urls);
         }
 
@@ -1429,6 +1444,22 @@ class TTA_Helper
         return $content;
     }
 
+    public static function  delete_duplicate_post_ids_if_have( $post_id ){
+        $duplicate_post_ids = get_option('tts_duplicate_post_ids', array());
+        if(in_array($post_id, $duplicate_post_ids)) {
+            // Search for the index
+            $key = array_search($post_id, $duplicate_post_ids);
+
+            if(is_numeric($key)) {
+                unset($duplicate_post_ids[$key]);
+
+                update_option('tts_duplicate_post_ids', $duplicate_post_ids);
+
+                update_post_meta( $post_id, 'tts_mp3_file_urls', [] );
+            };
+        }
+    }
+
     public static function remove_js_and_css_from_content($content) {
         // Remove <script>...</script>
         $content = preg_replace('#<script\b[^>]*>(.*?)</script>#is', '', $content);
@@ -1449,4 +1480,165 @@ class TTA_Helper
         return isset($post->post_content) && (has_shortcode($post->post_content, 'tta_listen_btn') || has_shortcode($post->post_content, 'atlasvoice'));
     }
 
+    public  static  function detect_browser() {
+        $user_agent = strtolower( $_SERVER['HTTP_USER_AGENT'] );
+
+        $browser = 'unknown';
+        if (strpos($user_agent, 'firefox') !== false) {
+            $browser = 'firefox';
+        } elseif (strpos($user_agent, 'chrome') !== false) {
+            $browser = 'chrome';
+        } elseif (strpos($user_agent, 'safari') !== false) {
+            $browser = 'safari';
+        } elseif (strpos($user_agent, 'edge') !== false) {
+            $browser = 'edge';
+        } elseif (strpos($user_agent, 'opr') !== false || strpos($user_agent, 'opera') !== false) {
+            $browser = 'opera';
+        }
+
+        return $browser;
+    }
+
+    public static  function get_user_ip_address() {
+        $ip_keys = [
+            'HTTP_CF_CONNECTING_IP', // Cloudflare
+            'HTTP_X_FORWARDED_FOR',
+            'HTTP_X_REAL_IP',
+            'HTTP_CLIENT_IP',
+            'REMOTE_ADDR'
+        ];
+
+        foreach ( $ip_keys as $key ) {
+            if ( ! empty( $_SERVER[ $key ] ) ) {
+                $ip = $_SERVER[ $key ];
+
+                // Handle multiple IPs (e.g. "116.206.88.143, 10.0.0.1")
+                if ( strpos( $ip, ',' ) !== false ) {
+                    $ip = explode( ',', $ip )[0];
+                }
+
+                return sanitize_text_field( trim( $ip ) );
+            }
+        }
+
+        return 'UNKNOWN';
+    }
+
+    /**
+     * Generate Audio Schema markup for SEO
+     *
+     * This function generates JSON-LD schema markup for audio content when:
+     * - Pro version is active
+     * - Current player ID is greater than 2
+     *
+     * @param array $params Array containing title, excerpt, post, content_read_time, mp3_file_urls, file_url_key, language, voice
+     * @return string The JSON-LD schema markup or empty string if conditions not met
+     */
+    public static function generate_audio_schema($params = [])
+    {
+        //TODO:: add UI for enabling schema
+        // Check if pro version is active and player ID is greater than 2
+        if (!is_pro_active() || self::get_player_id() <= 2 || ! apply_filters('tts_enable_audio_schema_markup', true, $params)) {
+            return '';
+        }
+
+        // Extract parameters
+        $title = isset($params['title']) ? $params['title'] : '';
+        $excerpt = isset($params['excerpt']) ? $params['excerpt'] : '';
+        $description = isset($params['description']) ? $params['description'] : '';
+        $post = isset($params['post']) ? $params['post'] : null;
+        $content_read_time = isset($params['content_read_time']) ? $params['content_read_time'] : 0;
+        $mp3_file_urls = isset($params['mp3_file_urls']) ? $params['mp3_file_urls'] : [];
+        $file_url_key = isset($params['file_url_key']) ? $params['file_url_key'] : '';
+        $language = isset($params['language']) ? $params['language'] : '';
+        $voice = isset($params['voice']) ? $params['voice'] : '';
+
+        // Validate required parameters
+        if (!$post || empty($mp3_file_urls) || !isset($mp3_file_urls[$file_url_key])) {
+            return '';
+        }
+
+        // Get the audio file URL
+        $audio_url = $mp3_file_urls[$file_url_key];
+
+        // Sanitize data for JSON output
+        $title_sanitized = $title;
+        $excerpt_sanitized = $excerpt;
+        $audio_url_sanitized = $audio_url;
+        $language_sanitized = esc_js($language);
+        $voice_sanitized = esc_js($voice);
+
+        // Get post metadata
+        $post_date = get_the_date('c', $post->ID); // ISO 8601 format
+        $post_url = get_permalink($post->ID);
+        $post_author = get_the_author_meta('display_name', $post->post_author);
+        $site_name = get_bloginfo('name');
+
+        // Calculate duration in ISO 8601 format (PT#M#S)
+        $duration = 'PT' . intval($content_read_time) . 'M';
+
+        $description = $excerpt_sanitized ?: $description;
+        $description = tta_clean_content($description);
+        // Build schema data array
+        $schema_data = [
+            '@context' => 'https://schema.org',
+            '@type' => 'AudioObject',
+            'name' => $title_sanitized,
+            'description' => $description,
+            'contentUrl' => $audio_url_sanitized,
+            'encodingFormat' => 'audio/mpeg',
+            'duration' => $duration,
+            'uploadDate' => $post_date,
+            'transcript' => $description,
+        ];
+
+        // Add language if available
+        if (!empty($language_sanitized)) {
+            $schema_data['inLanguage'] = $language_sanitized;
+        }
+
+        // Add author information
+        if (!empty($post_author)) {
+            $schema_data['author'] = [
+                '@type' => 'Person',
+                'name' => esc_js($post_author)
+            ];
+        }
+
+        // Add publisher information
+        if (!empty($site_name)) {
+            $schema_data['publisher'] = [
+                '@type' => 'Organization',
+                'name' => esc_js($site_name)
+            ];
+        }
+
+        // Add associated web page
+//        if (!empty($post_url)) {
+//            $schema_data['associatedArticle'] = [
+//                "@type" => "Article",
+//                'url' => esc_url($post_url),
+//                'headline' => $title_sanitized,
+//            ];
+//        }
+
+        // Allow filtering of schema data
+        $schema_data = apply_filters('tts_audio_schema_data', $schema_data, $params, $post);
+
+        // Generate JSON-LD markup
+        ob_start();
+        ?>
+<!-- Text To Audio Schema -->
+<script type="application/ld+json">
+<?php echo wp_json_encode($schema_data, JSON_PRETTY_PRINT |           // Makes it readable
+        JSON_UNESCAPED_SLASHES |      // Keeps URLs clean (/ instead of \/)
+        JSON_UNESCAPED_UNICODE        // Converts \u2019 to actual characters
+    ); ?>
+</script>
+        <?php
+        $schema_markup = ob_get_clean();
+
+        // Allow filtering of final schema markup
+        return apply_filters('tts_audio_schema_markup', $schema_markup, $schema_data, $params, $post);
+    }
 }

@@ -126,6 +126,7 @@ class TTA_Admin {
 				]
 			] ),
 			'is_mobile'                => wp_is_mobile(),
+
 		];
 	}
 
@@ -224,14 +225,19 @@ class TTA_Admin {
 			echo $object;
 		}
 
-		if ( TTA_Helper::is_edit_page() ) {
+		if ( TTA_Helper::is_edit_page() || isset( $_REQUEST['page'] ) && ( 'text-to-audio' == $_REQUEST['page'] ) ) {
+            wp_enqueue_script( 'AtlasVoice_chart', 'https://cdn.jsdelivr.net/npm/chart.js', [], $this->version, true );
 			wp_enqueue_script( 'AtlasVoicePlayerInsights', plugin_dir_url( __FILE__ ) . 'js/build/AtlasVoicePlayerInsights.min.js', array(
 				'wp-hooks',
-				'wp-i18n'
+				'wp-i18n',
+                'AtlasVoice_chart'
 			), $this->version, true );
 			wp_localize_script( 'AtlasVoicePlayerInsights', 'ttsObj', $this->localize_data );
-			wp_enqueue_script( 'AtlasVoiceCopyShortcode', plugin_dir_url( __FILE__ ) . 'js/AtlasVoiceCopyShortcode.js', array( 'wp-hooks' ), $this->version, true );
 		}
+
+        if ( TTA_Helper::is_edit_page() ) {
+            wp_enqueue_script( 'AtlasVoiceCopyShortcode', plugin_dir_url( __FILE__ ) . 'js/AtlasVoiceCopyShortcode.js', array( 'wp-hooks' ), $this->version, true );
+        }
 
 	}
 
@@ -291,6 +297,8 @@ class TTA_Admin {
 			);
 		}
 
+        wp_enqueue_script( 'atlasvoice-timezone' , 'https://cdn.jsdelivr.net/npm/countries-and-timezones/dist/index.min.js', [] ,$this->version, true);
+        array_push( $dependencies, 'atlasvoice-timezone' );
 		if ( $player_id > 1 ) {
 			wp_enqueue_script( 'TextToSpeech', plugin_dir_url( __FILE__ ) . 'js/build/TextToSpeech.min.js', $dependencies, $this->version, true );
 			wp_localize_script( 'TextToSpeech', 'ttsObj', $this->localize_data );

@@ -106,6 +106,9 @@ function tta_get_button_content($atts, $is_block = false, $tag_content = '')
     static $block_btn_no = 0;
     $player_number++;
     global $post;
+    if(isset($atts['id']) && $atts['id']) {
+        $post = get_post($atts['id']);
+    }
     /**
      * TTS-168
      */
@@ -114,7 +117,7 @@ function tta_get_button_content($atts, $is_block = false, $tag_content = '')
     }
 
     // this is a pro feature to show button on blog main page with title and excerpt.
-    if (!TTA_Helper::should_load_button($post) || $block_btn_no > 0) {
+    if (!TTA_Helper::should_load_button($post, 'tta_get_button_content') || $block_btn_no > 0) {
         return;
     }
 
@@ -131,7 +134,8 @@ function tta_get_button_content($atts, $is_block = false, $tag_content = '')
     // TODO make it dynamic. now Recording it not available in UI.
     $sentence_delimiter =  apply_filters('tts_sentence_delimiter', '. ' );
 
-    $get_content_from_dom = true;
+    $get_content_from_dom = isset($settings['tta__settings_read_content_from_dom']) && $settings['tta__settings_read_content_from_dom'];
+
     $content = '';
     // Button listen text.
     if ($atts || has_filter('tta__button_text_arr')) {
@@ -152,7 +156,7 @@ function tta_get_button_content($atts, $is_block = false, $tag_content = '')
     $excerpt_sanitized = '';
     $text_before_content = '';
     $text_after_content = '';
-    if(!$content) {
+    if(empty($content)) {
         if (isset($settings['tta__settings_add_post_excerpt_to_read']) && $settings['tta__settings_add_post_excerpt_to_read']) {
             /**
              * Version 1.9.15
@@ -182,9 +186,9 @@ function tta_get_button_content($atts, $is_block = false, $tag_content = '')
             $content .= $excerpt_sanitized;
         }
 
-        $description = get_the_content();
+        $description = get_the_content(null, false, $post);
         $description_sanitized = $description;
-        $content .= apply_filters('tta__content_description', $description_sanitized, $description, get_the_ID(), $post);
+        $content .= apply_filters('tta__content_description', $description_sanitized, $description, $post->ID, $post);
 
 
         $text_before_content = isset($settings['tta__settings_text_before_content']) && $settings['tta__settings_text_before_content'] ? $settings['tta__settings_text_before_content'] : '';
@@ -287,7 +291,7 @@ function tts_enqueue_button_scripts($params)
     add_action('wp_print_footer_scripts', function () use ($params) {
         extract($params);
         $original_title = trim($title);
-        $temp_title = trim(get_the_title());
+        $temp_title = trim(get_the_title($post));
         $temp_title = tta_clean_content($temp_title);
 
         // Get plugin all settings and pass it to TTS javascript Object.
@@ -320,7 +324,7 @@ function get_enqueued_js_object($params, $plugin_all_settings)
     $language = $language_and_voice['language'];
     $voice = $language_and_voice['voice'];
     $file_url_key = TTA_Helper::tts_get_file_url_key($language, $voice);
-    $file_name = TTA_Helper::tts_file_name($title, $language, $voice, $post->ID);
+    $file_name = TTA_Helper::tts_file_name($title, $language, $voice, $post->ID, $post);
     $mp3_file_urls = TTA_Helper::get_mp3_file_urls($file_url_key, $post, $date, $file_name);
     $compatible_data = TTA_Helper::tts_get_settings('compatible');
     $compatible_content = apply_filters('tts_compatible_plugins_content', [], $compatible_data, $post);
@@ -390,8 +394,26 @@ function get_enqueued_js_object($params, $plugin_all_settings)
         }
     </script>
     <?php
+    // Generate audio schema markup (only if conditions are met)
+    $schema_params = [
+        'title' => $title,
+        'excerpt' => $excerpt_sanitized,
+        'description' => $content,
+        'post' => $post,
+        'content_read_time' => $content_read_time,
+        'mp3_file_urls' => $mp3_file_urls,
+        'file_url_key' => $file_url_key,
+        'language' => $language,
+        'voice' => $voice,
+    ];
+    echo TTA_Helper::generate_audio_schema($schema_params);
     $object = ob_get_contents();
+//    ob_end_clean();
 
+
+//    $audio_schema = TTA_Helper::generate_audio_schema($schema_params);
+//    error_log(print_r($audio_schema, true));
+    // Return JS object with schema if available
     return $object;
 }
 
@@ -515,8 +537,11 @@ function add_listen_button($content)
 {
     static $button_no = 0;
     $button_no++;
-    TTA_Helper::set_default_settings();
     global $post;
+    if (!TTA_Helper::should_load_button($post) ) {
+       return $content;
+    }
+    TTA_Helper::set_default_settings();
     $button = '';
     $settings = TTA_Helper::tts_get_settings('settings');
     $customize = TTA_Helper::tts_get_settings('customize');
@@ -569,8 +594,7 @@ function add_listen_button($content)
         $final_content = $content . $button;
     }
 
-    return apply_filters('tts_button_with_content', $final_content, $button, $content, $button_position);
-
+    return apply_filters('tts_button_with_content', $final_content, $button, $content, $button_position, $post);
 
 }
 
@@ -880,3 +904,22 @@ function is_pro_active()
 
 
 }
+
+/**
+ * Write debug logs for Text-to-Audio plugin.
+ *
+ * @param string $message  The log message.
+ */
+function tts_debug( $message ) {
+
+    // Plugin directory
+    $log_file = WP_CONTENT_DIR . '/debug.log';
+
+    // Prepare log message with timestamp
+    $time = date( 'Y-m-d H:i:s' );
+    $formatted_message = "[$time] [atlasvoice] " . print_r( $message, true ) . PHP_EOL;
+
+    // Append to log file
+    file_put_contents( $log_file, $formatted_message, FILE_APPEND | LOCK_EX );
+}
+
