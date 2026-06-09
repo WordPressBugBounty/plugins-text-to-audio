@@ -1,0 +1,20 @@
+{
+    "name": "azizulhasan/text-to-audio",
+    "type": "plugin",
+    "authors": [
+        {
+            "name": "Azizul Hasan",
+            "email": "azizulhasan.cr@gmail.com"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "TTA\\": "includes",
+            "TTA_Admin\\": "admin",
+            "TTA_Public\\": "public",
+            "TTA_Api\\": "api",
+            "AtlasAiDev\\AppService\\": "libs/AtlasAiDev"
+        }
+    },
+    "require": {}
+}
