@@ -29,6 +29,18 @@ class StepRail {
 	private static $registered   = false;
 	private static $front_active = false;
 
+	/**
+	 * TTS-255: whether the front-end Step Rail UI is rendering on this request.
+	 * Set in maybe_activate() (template_redirect, before admin_bar_menu) so the
+	 * Mode bar node can show the staging/production indicator while the picker
+	 * is open even when its own setting is off.
+	 *
+	 * @return bool
+	 */
+	public static function is_front_active() {
+		return self::$front_active;
+	}
+
 	public static function register() {
 		// Front-end: show picker tabs on eligible singular posts.
 		add_action( 'template_redirect', array( __CLASS__, 'maybe_activate' ), 5 );
@@ -51,8 +63,18 @@ class StepRail {
 		// admin explicitly arms the picker via `?atlasvoice_picker=1` so
 		// the rail is reachable on any singular post even if its post type
 		// isn't on the listening allow-list yet.
+		// TTS-255 — the on-page selector no longer auto-appears for logged-in
+		// admins on a plain post URL (the cause of the "bloating" feedback).
 		$forced = isset( $_GET[ self::AUTO_PARAM ] ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		if ( ! $forced && ! self::post_has_listening( get_the_ID() ) ) { return; }
+		if ( ! $forced ) {
+			// No explicit launch: the selector auto-appears on the page only
+			// when the admin has turned it on (tta__settings_enable_steprail,
+			// default OFF; filter tts_enable_steprail) and the post type has
+			// listening. By default nothing shows on a plain post URL — it
+			// opens only via the "Pick visually" links (?atlasvoice_picker=1).
+			$enabled = class_exists( '\\TTA\\TTA_Helper' ) ? \TTA\TTA_Helper::is_steprail_enabled() : false;
+			if ( ! $enabled || ! self::post_has_listening( get_the_ID() ) ) { return; }
+		}
 
 		self::$front_active = true;
 
@@ -122,6 +144,7 @@ class StepRail {
 		<div
 			id="av-steprail-root"
 			data-post-id="<?php echo esc_attr( $post_id ); ?>"
+			data-post-type="<?php echo esc_attr( $post_id ? get_post_type( $post_id ) : '' ); ?>"
 			data-rest="<?php echo esc_attr( $rest_base ); ?>"
 			data-nonce="<?php echo esc_attr( $nonce ); ?>"
 			data-pro="<?php echo esc_attr( $pro ); ?>"
@@ -159,7 +182,7 @@ class StepRail {
 							<strong><?php echo esc_html__( 'Scope', 'text-to-audio' ); ?></strong>
 						</div>
 						<div class="av-step__body">
-							<p class="av-scope-readout"><?php echo esc_html__( 'Loading…', 'text-to-audio' ); ?></p>
+							<div class="av-scope-readout"><?php echo esc_html__( 'Loading…', 'text-to-audio' ); ?></div>
 						</div>
 					</section>
 
@@ -498,22 +521,23 @@ class StepRail {
 .av-status{flex:1;font-size:12px;color:#4b5563;}
 
 /* ── Scope pills ─────────────────────────────────────────────── */
-.av-scope-readout{
-  margin:0;font-size:13px;color:#1d2327;font-weight:500;
-  background:#eaf3f4;border-left:3px solid #184c53;
-  padding:6px 10px;border-radius:3px;
-}
-.av-scope-readout .av-scope-readout__hint{
-  display:block;font-size:11px;color:#6b7280;font-weight:400;margin-top:2px;
-}
+.av-scope-readout{margin:0;}
 .av-scope-group{display:flex;flex-wrap:wrap;gap:6px;}
-.av-scope-group label{
-  display:inline-flex;align-items:center;gap:5px;
-  padding:3px 10px;border:1px solid #d1d5db;border-radius:999px;
-  background:#fff;cursor:pointer;font-size:12px;
+.av-scope-pill{
+  display:inline-flex!important;align-items:center!important;gap:5px!important;
+  padding:4px 11px!important;border:1px solid #d1d5db!important;border-radius:999px!important;
+  background:#fff!important;color:#1d2327!important;cursor:pointer!important;
+  font:500 12px/1.3 inherit!important;text-transform:none!important;letter-spacing:0!important;
+  text-shadow:none!important;box-shadow:none!important;text-decoration:none!important;
 }
-.av-scope-group label.is-checked{border-color:#184c53;background:#eaf3f4;}
-.av-scope-group label.is-disabled{opacity:.45;cursor:not-allowed;}
+.av-scope-pill:hover{background:#f3f4f6!important;color:#1d2327!important;}
+.av-scope-pill.is-checked{background:#184c53!important;border-color:#184c53!important;color:#fff!important;}
+.av-scope-pill[disabled]{opacity:.45!important;cursor:not-allowed!important;}
+.av-scope-hint{margin:8px 0 0;font-size:12px;color:#6b7280;line-height:1.5;}
+.av-scope-hint--warn{
+  color:#78350f;background:#fef3c7;border:1px solid #fde68a;
+  border-radius:4px;padding:6px 8px;
+}
 
 /* ── Region ──────────────────────────────────────────────────── */
 .av-region-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;}
