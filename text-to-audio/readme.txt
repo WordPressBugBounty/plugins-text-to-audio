@@ -5,7 +5,7 @@ Tags: accessibility, speech, tts, text to speech, text to audio
 Requires at least: 5.6
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 2.3.6
+Stable tag: 2.3.7
 License: GPLv3 or later
 License URI: https://www.gnu.org/licenses/gpl-3.0.txt
 
@@ -70,6 +70,10 @@ Whether you run a blog, news site, online store, or educational platform, AtlasV
 * **Unlimited Text-to-Speech:** Convert unlimited text to speech at no cost — no character limits, no monthly quotas.
 
 * **Full Customization:** Customize button color, width, border radius, hover effects, and text labels. Preview all changes in real-time from the dashboard.
+
+* **Button Position:** Place the Listen button before or after your post content, or drop it anywhere with the `[atlasvoice]` shortcode.
+
+* **Floating Player:** On long articles the button follows your readers instead of scrolling away. It stays in your content until they scroll past it, then docks to the edge of the screen — choose bottom full width, bottom right, bottom left, or sticky top. Readers arriving part-way down a page see it straight away, and you can switch docking off entirely with a single toggle in Settings.
 
 * **Language & Voice Selection:** Choose the default language and voice from the **Listening** menu. Adjust speed, pitch, and volume for browser-native players.
 
@@ -148,7 +152,7 @@ Unlock premium AI voices, bulk operations, cloud backup, advanced analytics, and
 
 * **6 Player Styles:** Default (free browser voices), Default Pro, AtlasVoice TTS Pro (own AI engine), Google Cloud TTS, ChatGPT TTS, and ElevenLabs TTS. Pro players use a modern, responsive HTML5 audio player with progress bar, volume, speed, and download button.
 
-* **Floating Player & Display Controls:** Optional sticky player, display by date range, custom margin control, and full CSS customization.
+* **Display Controls:** Display the player by date range, control margins, and apply full CSS customization. (Floating player positions are now included in the free version.)
 
 **Translation & Multilingual (Pro):**
 
@@ -394,6 +398,14 @@ Please report security bugs through the [Patchstack Vulnerability Disclosure Pro
 We are looking for people to help translate this plugin. If you can help, we would love to hear from you.
 Help us and the WordPress community translate the plugin. [Contact us](http://atlasaidev.com/contact-us/) and we'll guide you through the process.
 
+
+= 2.3.7 ( 02 Aug 2026 ) =
+Added : Floating player — the Listen button now follows your readers. It sits in your content as usual, then docks to the edge of the screen once they scroll past it, so the controls are always within reach on long articles. Choose where it docks from Customization: bottom full width, bottom right, bottom left, or sticky top. Prefer it to stay put? Switch docking off in Settings.
+Added : Button position and floating position are now two separate choices, so you can place the button before or after your content and still pick a different corner for it to dock to.
+Improved : Floating positions are now included in the free plugin. They used to be a Pro-only feature.
+Improved : Readers who arrive part-way down a page (from a search result or a shared link) now see the player straight away instead of having to scroll back up to find it.
+Fixed : On a fresh install the plugin no longer guesses which part of your page to read. It now detects your content automatically, which avoids reading the wrong section on unusual themes.
+Fixed : Promotional notices from AtlasAiDev now close as soon as you click the X, instead of staying on screen until the page reloads.
 
 = 2.3.6 ( 24 Jul 2026 ) =
 Added : Listen to selected text — visitors can highlight any passage on your post and a small button reads just that part aloud, or start reading from any word they click. Off by default; turn it on from the Highlight tab.
@@ -652,6 +664,9 @@ Introduced :  Complete new UI introduced.
 
 
 == Upgrade Notice ==
+
+= 2.3.7 =
+The Listen button can now float — it follows readers down the page and docks to the edge you choose (bottom bar, either corner, or sticky top), and this is now free rather than Pro-only. Button position and docking position are separate settings. Update recommended.
 
 = 2.3.6 =
 New "Listen to selected text" (highlight a passage and hear just that part — off by default, enable in the Highlight tab), a built-in Pricing page, and easier ways to explore Pro. Also fixes settings not saving on sites with certain security plugins. Update recommended.
